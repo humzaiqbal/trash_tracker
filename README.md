@@ -2,6 +2,10 @@
 
 A simple web application that allows users to assign themselves to various routes.
 
+## Live Demo
+
+Access the live website at: https://humzaiqbal.github.io/trash_tracker/
+
 ## Features
 
 - User login with name
@@ -10,34 +14,37 @@ A simple web application that allows users to assign themselves to various route
 - Unassign yourself from a route
 - See who is assigned to each route
 - View the number of people assigned to each route
-- Data is saved in the browser's local storage
+- Real-time data synchronization across all users
+- Data is stored in Firebase Realtime Database
 
 ## How to Use
 
-1. Access the website via the GitHub Pages URL (once set up)
+1. Access the website via the GitHub Pages URL
 2. Enter your name and click "Login" or press Enter
 3. Browse the available routes
 4. Click "Assign Me" to assign yourself to a route
 5. If you're already assigned to a route and try to assign to another, you'll be asked if you want to switch
 6. Click "Unassign Me" to remove yourself from a route
 
-## Important Note About Data Storage
-
-This application uses the browser's localStorage to store data. This means:
-
-- Each user will have their own local copy of the data
-- Data is stored only on the user's device
-- Users won't see each other's assignments unless they're using the same device and browser
-- To create a truly multi-user experience where everyone sees the same data, a backend server would be needed
-
 ## Technical Details
 
-This is a simple web application built with:
+This is a web application built with:
 - HTML
 - CSS
 - JavaScript
+- Firebase Realtime Database
 
-No server or database is required as all data is stored in the browser's local storage.
+The application uses Firebase to store and synchronize data in real-time across all users.
+
+## Setup Instructions
+
+To set up your own instance of this application:
+
+1. Create a Firebase project at [firebase.google.com](https://firebase.google.com/)
+2. Enable the Realtime Database in your Firebase project
+3. Copy your Firebase configuration from the Firebase console
+4. Update the `firebase-config.js` file with your Firebase configuration
+5. Deploy the application to GitHub Pages or any other hosting service
 
 ## Customizing Routes
 
@@ -50,6 +57,8 @@ let routes = [
     // Add more routes here
 ];
 ```
+
+After modifying the routes, you'll need to reset the Firebase database or manually update it.
 
 ## Deployment Instructions
 

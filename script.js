@@ -14,19 +14,31 @@ let routes = [
     { id: 5, name: 'Park Route', people: [] }
 ];
 
-// Save data to localStorage
-function saveData() {
-    localStorage.setItem('routes', JSON.stringify(routes));
-    localStorage.setItem('currentUser', currentUser);
+// Firebase references
+const routesRef = database.ref('routes');
+const usersRef = database.ref('users');
+
+// Initialize data in Firebase if it doesn't exist
+function initializeFirebase() {
+    routesRef.once('value', snapshot => {
+        if (!snapshot.exists()) {
+            // If routes don't exist in Firebase, initialize them
+            routesRef.set(routes);
+        }
+    });
 }
 
-// Load data from localStorage
+// Load data from Firebase
 function loadData() {
-    const savedRoutes = localStorage.getItem('routes');
-    if (savedRoutes) {
-        routes = JSON.parse(savedRoutes);
-    }
+    // Get routes from Firebase
+    routesRef.on('value', snapshot => {
+        if (snapshot.exists()) {
+            routes = Object.values(snapshot.val());
+            renderRoutes();
+        }
+    });
     
+    // Check if user is already logged in
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
         currentUser = savedUser;
@@ -42,40 +54,10 @@ function login() {
     const name = nameInput.value.trim();
     if (name) {
         currentUser = name;
-        saveData();
+        localStorage.setItem('currentUser', currentUser);
         showRoutes();
-        
-        // Show local storage notification
-        showLocalStorageNotification();
     } else {
         alert('Please enter your name');
-    }
-}
-
-// Show local storage notification
-function showLocalStorageNotification() {
-    // Create notification element if it doesn't exist
-    if (!document.getElementById('storage-notification')) {
-        const notification = document.createElement('div');
-        notification.id = 'storage-notification';
-        notification.className = 'notification';
-        notification.innerHTML = `
-            <p>Note: Data is stored only on your device. Other users won't see your assignments unless they use the same device.</p>
-            <button id="close-notification">✕</button>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Add event listener to close button
-        document.getElementById('close-notification').addEventListener('click', () => {
-            notification.style.display = 'none';
-            localStorage.setItem('notification-dismissed', 'true');
-        });
-        
-        // Check if notification was previously dismissed
-        if (localStorage.getItem('notification-dismissed') === 'true') {
-            notification.style.display = 'none';
-        }
     }
 }
 
@@ -95,15 +77,15 @@ function renderRoutes() {
         routeCard.className = 'route-card';
         
         // Check if current user is assigned to this route
-        const isAssigned = route.people.includes(currentUser);
+        const isAssigned = route.people && route.people.includes(currentUser);
         
         routeCard.innerHTML = `
             <div class="route-header">
                 <span class="route-name">${route.name}</span>
-                <span class="route-count">${route.people.length} people</span>
+                <span class="route-count">${route.people ? route.people.length : 0} people</span>
             </div>
             <div class="route-people">
-                ${route.people.map(person => `<span class="person-tag">${person}</span>`).join('')}
+                ${route.people ? route.people.map(person => `<span class="person-tag">${person}</span>`).join('') : ''}
             </div>
             <button class="assign-button ${isAssigned ? 'assigned' : ''}" data-route-id="${route.id}">
                 ${isAssigned ? 'Unassign Me' : 'Assign Me'}
@@ -126,6 +108,11 @@ function handleAssignment(event) {
     
     if (!route) return;
     
+    // Initialize people array if it doesn't exist
+    if (!route.people) {
+        route.people = [];
+    }
+    
     const isAssigned = route.people.includes(currentUser);
     
     if (isAssigned) {
@@ -133,11 +120,13 @@ function handleAssignment(event) {
         route.people = route.people.filter(person => person !== currentUser);
     } else {
         // Check if user is already assigned to another route
-        const alreadyAssignedRoute = routes.find(r => r.people.includes(currentUser));
+        const alreadyAssignedRoute = routes.find(r => r.people && r.people.includes(currentUser));
         if (alreadyAssignedRoute) {
             if (confirm(`You are already assigned to "${alreadyAssignedRoute.name}". Do you want to switch to "${route.name}"?`)) {
                 // Remove from previous route
                 alreadyAssignedRoute.people = alreadyAssignedRoute.people.filter(person => person !== currentUser);
+                updateRouteInFirebase(alreadyAssignedRoute);
+                
                 // Add to new route
                 route.people.push(currentUser);
             }
@@ -147,8 +136,12 @@ function handleAssignment(event) {
         }
     }
     
-    saveData();
-    renderRoutes();
+    updateRouteInFirebase(route);
+}
+
+// Update a route in Firebase
+function updateRouteInFirebase(route) {
+    routesRef.child(route.id - 1).update(route);
 }
 
 // Event Listeners
@@ -160,4 +153,5 @@ nameInput.addEventListener('keypress', (e) => {
 });
 
 // Initialize
+initializeFirebase();
 loadData(); 
