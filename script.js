@@ -7,11 +7,15 @@ const routesContainer = document.getElementById('routes-container');
 // State
 let currentUser = '';
 let routes = [
-    { id: 1, name: 'Downtown Route', people: [] },
-    { id: 2, name: 'Riverside Path', people: [] },
-    { id: 3, name: 'Mountain Trail', people: [] },
-    { id: 4, name: 'Beach Cleanup', people: [] },
-    { id: 5, name: 'Park Route', people: [] }
+    { id: 1, name: '18th Street from Mission to Guerrero and 18th to 19th along Valencia', people: [] },
+    { id: 2, name: '19th Street from Mission and 19th to 20th along Valencia', people: [] },
+    { id: 3, name: '20th Street from Mission and 20th to 21st along Valencia', people: [] },
+    { id: 4, name: '21st Street from Mission and 21st to 22nd along Valencia', people: [] },
+    { id: 5, name: '22nd Street from Mission and 22nd to 23rd along Valencia', people: [] },
+    { id: 6, name: '23rd Street from Mission and 23rd to 24th along Valencia', people: [] },
+    { id: 7, name: '24th Street from Mission and 24th to 25th along Valencia', people: [] },
+    { id: 8, name: 'Mission St from 19th to 23rd', people: [] },
+    
 ];
 
 // Firebase references
