@@ -88,6 +88,13 @@ button:hover {
     font-weight: bold;
 }
 
+.route-count-inline {
+    font-size: 16px;
+    font-weight: normal;
+    color: #3498db;
+    margin-left: 5px;
+}
+
 .route-count {
     background-color: #3498db;
     color: white;

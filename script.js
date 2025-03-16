@@ -1,13 +1,54 @@
 // DOM Elements
-const nameInput = document.getElementById('name-input');
-const loginButton = document.getElementById('login-button');
-const routesSection = document.getElementById('routes-section');
-const routesContainer = document.getElementById('routes-container');
-const logoutButton = document.getElementById('logout-button');
-const currentUserDisplay = document.getElementById('current-user-display');
+let nameInput;
+let loginButton;
+let routesSection;
+let routesContainer;
+let logoutButton;
+let currentUserDisplay;
 
-// Debug DOM elements
-console.log('Logout button element:', logoutButton);
+// Initialize DOM elements
+function initDOMElements() {
+    nameInput = document.getElementById('name-input');
+    loginButton = document.getElementById('login-button');
+    routesSection = document.getElementById('routes-section');
+    routesContainer = document.getElementById('routes-container');
+    logoutButton = document.getElementById('logout-button');
+    currentUserDisplay = document.getElementById('current-user-display');
+    
+    // Debug DOM elements
+    console.log('Logout button element:', logoutButton);
+    
+    // Set up event listeners
+    setupEventListeners();
+}
+
+// Set up event listeners
+function setupEventListeners() {
+    // Login button
+    if (loginButton) {
+        loginButton.addEventListener('click', login);
+    }
+    
+    // Logout button
+    if (logoutButton) {
+        console.log('Adding event listener to logout button');
+        logoutButton.addEventListener('click', function() {
+            console.log('Logout button clicked');
+            logout();
+        });
+    } else {
+        console.error('Logout button not found in the DOM');
+    }
+    
+    // Name input enter key
+    if (nameInput) {
+        nameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
+    }
+}
 
 // State
 let currentUser = '';
@@ -105,11 +146,12 @@ function renderRoutes() {
         
         // Check if current user is assigned to this route
         const isAssigned = route.people && route.people.includes(currentUser);
+        const peopleCount = route.people ? route.people.length : 0;
         
         routeCard.innerHTML = `
             <div class="route-header">
-                <span class="route-name">${route.name}</span>
-                <span class="route-count">${route.people ? route.people.length : 0} people</span>
+                <span class="route-name">${route.name} <span class="route-count-inline">(${peopleCount} ${peopleCount === 1 ? 'person' : 'people'})</span></span>
+                <span class="route-count">${peopleCount} ${peopleCount === 1 ? 'person' : 'people'}</span>
             </div>
             <div class="route-people">
                 ${route.people ? route.people.map(person => `<span class="person-tag">${person}</span>`).join('') : ''}
@@ -171,26 +213,10 @@ function updateRouteInFirebase(route) {
     routesRef.child(route.id - 1).update(route);
 }
 
-// Event Listeners
-loginButton.addEventListener('click', login);
-
-// Add event listener for logout button with debugging
-console.log('Adding event listener to logout button');
-if (logoutButton) {
-    logoutButton.addEventListener('click', function() {
-        console.log('Logout button clicked');
-        logout();
-    });
-} else {
-    console.error('Logout button not found in the DOM');
-}
-
-nameInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        login();
-    }
-});
-
-// Initialize
-initializeFirebase();
-loadData(); 
+// Wait for DOM to be fully loaded
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM fully loaded');
+    initDOMElements();
+    initializeFirebase();
+    loadData();
+}); 
