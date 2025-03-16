@@ -6,6 +6,9 @@ const routesContainer = document.getElementById('routes-container');
 const logoutButton = document.getElementById('logout-button');
 const currentUserDisplay = document.getElementById('current-user-display');
 
+// Debug DOM elements
+console.log('Logout button element:', logoutButton);
+
 // State
 let currentUser = '';
 let routes = [
@@ -69,6 +72,7 @@ function login() {
 
 // Logout functionality
 function logout() {
+    console.log('Logout function called');
     currentUser = '';
     localStorage.removeItem('currentUser');
     showLogin();
@@ -84,6 +88,7 @@ function showRoutes() {
 
 // Show login section
 function showLogin() {
+    console.log('showLogin function called');
     document.querySelector('.login-section').classList.remove('hidden');
     routesSection.classList.add('hidden');
     nameInput.value = '';
@@ -168,7 +173,18 @@ function updateRouteInFirebase(route) {
 
 // Event Listeners
 loginButton.addEventListener('click', login);
-logoutButton.addEventListener('click', logout);
+
+// Add event listener for logout button with debugging
+console.log('Adding event listener to logout button');
+if (logoutButton) {
+    logoutButton.addEventListener('click', function() {
+        console.log('Logout button clicked');
+        logout();
+    });
+} else {
+    console.error('Logout button not found in the DOM');
+}
+
 nameInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         login();
