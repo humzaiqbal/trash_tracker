@@ -3,6 +3,8 @@ const nameInput = document.getElementById('name-input');
 const loginButton = document.getElementById('login-button');
 const routesSection = document.getElementById('routes-section');
 const routesContainer = document.getElementById('routes-container');
+const logoutButton = document.getElementById('logout-button');
+const currentUserDisplay = document.getElementById('current-user-display');
 
 // State
 let currentUser = '';
@@ -65,11 +67,27 @@ function login() {
     }
 }
 
+// Logout functionality
+function logout() {
+    currentUser = '';
+    localStorage.removeItem('currentUser');
+    showLogin();
+}
+
 // Show routes section
 function showRoutes() {
     document.querySelector('.login-section').classList.add('hidden');
     routesSection.classList.remove('hidden');
+    currentUserDisplay.textContent = `Logged in as: ${currentUser}`;
     renderRoutes();
+}
+
+// Show login section
+function showLogin() {
+    document.querySelector('.login-section').classList.remove('hidden');
+    routesSection.classList.add('hidden');
+    nameInput.value = '';
+    nameInput.focus();
 }
 
 // Render all routes
@@ -150,6 +168,7 @@ function updateRouteInFirebase(route) {
 
 // Event Listeners
 loginButton.addEventListener('click', login);
+logoutButton.addEventListener('click', logout);
 nameInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         login();

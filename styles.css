@@ -165,4 +165,33 @@ button:hover {
 
 #close-notification:hover {
     color: #555;
+}
+
+/* Header with logout button */
+.header-with-logout {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#current-user-display {
+    font-weight: bold;
+    color: #3498db;
+}
+
+#logout-button {
+    background-color: #e74c3c;
+    padding: 8px 15px;
+    font-size: 14px;
+}
+
+#logout-button:hover {
+    background-color: #c0392b;
 } 
