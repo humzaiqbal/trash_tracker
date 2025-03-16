@@ -44,8 +44,38 @@ function login() {
         currentUser = name;
         saveData();
         showRoutes();
+        
+        // Show local storage notification
+        showLocalStorageNotification();
     } else {
         alert('Please enter your name');
+    }
+}
+
+// Show local storage notification
+function showLocalStorageNotification() {
+    // Create notification element if it doesn't exist
+    if (!document.getElementById('storage-notification')) {
+        const notification = document.createElement('div');
+        notification.id = 'storage-notification';
+        notification.className = 'notification';
+        notification.innerHTML = `
+            <p>Note: Data is stored only on your device. Other users won't see your assignments unless they use the same device.</p>
+            <button id="close-notification">✕</button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Add event listener to close button
+        document.getElementById('close-notification').addEventListener('click', () => {
+            notification.style.display = 'none';
+            localStorage.setItem('notification-dismissed', 'true');
+        });
+        
+        // Check if notification was previously dismissed
+        if (localStorage.getItem('notification-dismissed') === 'true') {
+            notification.style.display = 'none';
+        }
     }
 }
 

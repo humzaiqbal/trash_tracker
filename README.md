@@ -14,12 +14,21 @@ A simple web application that allows users to assign themselves to various route
 
 ## How to Use
 
-1. Open the `index.html` file in your web browser
+1. Access the website via the GitHub Pages URL (once set up)
 2. Enter your name and click "Login" or press Enter
 3. Browse the available routes
 4. Click "Assign Me" to assign yourself to a route
 5. If you're already assigned to a route and try to assign to another, you'll be asked if you want to switch
 6. Click "Unassign Me" to remove yourself from a route
+
+## Important Note About Data Storage
+
+This application uses the browser's localStorage to store data. This means:
+
+- Each user will have their own local copy of the data
+- Data is stored only on the user's device
+- Users won't see each other's assignments unless they're using the same device and browser
+- To create a truly multi-user experience where everyone sees the same data, a backend server would be needed
 
 ## Technical Details
 
@@ -41,6 +50,18 @@ let routes = [
     // Add more routes here
 ];
 ```
+
+## Deployment Instructions
+
+### GitHub Pages
+
+1. Create a GitHub repository
+2. Push this code to the repository
+3. Go to the repository settings
+4. Scroll down to the GitHub Pages section
+5. Select the main branch as the source
+6. Click Save
+7. Your site will be published at `https://[your-username].github.io/[repository-name]/`
 
 ## License
 
