@@ -140,6 +140,12 @@ function showLogin() {
 function renderRoutes() {
     routesContainer.innerHTML = '';
     
+    // Add a reminder about the recommended maximum
+    const reminderElement = document.createElement('div');
+    reminderElement.className = 'route-reminder';
+    reminderElement.innerHTML = '<p>Routes with <span class="full-route">5 or more people</span> have reached the recommended maximum.</p>';
+    routesContainer.appendChild(reminderElement);
+    
     routes.forEach(route => {
         const routeCard = document.createElement('div');
         routeCard.className = 'route-card';
@@ -148,16 +154,23 @@ function renderRoutes() {
         const isAssigned = route.people && route.people.includes(currentUser);
         const peopleCount = route.people ? route.people.length : 0;
         
+        // Check if route has reached or exceeded the recommended maximum
+        const isAtMaximum = peopleCount >= 5;
+        
+        if (isAtMaximum) {
+            routeCard.classList.add('route-at-maximum');
+        }
+        
         routeCard.innerHTML = `
             <div class="route-header">
-                <span class="route-name">${route.name} <span class="route-count-inline">(${peopleCount} ${peopleCount === 1 ? 'person' : 'people'})</span></span>
-                <span class="route-count">${peopleCount} ${peopleCount === 1 ? 'person' : 'people'}</span>
+                <span class="route-name">${route.name} <span class="route-count-inline ${isAtMaximum ? 'maximum-reached' : ''}">(${peopleCount} ${peopleCount === 1 ? 'person' : 'people'})</span></span>
+                <span class="route-count ${isAtMaximum ? 'maximum-reached' : ''}">${peopleCount} ${peopleCount === 1 ? 'person' : 'people'}</span>
             </div>
             <div class="route-people">
                 ${route.people ? route.people.map(person => `<span class="person-tag">${person}</span>`).join('') : ''}
             </div>
-            <button class="assign-button ${isAssigned ? 'assigned' : ''}" data-route-id="${route.id}">
-                ${isAssigned ? 'Unassign Me' : 'Assign Me'}
+            <button class="assign-button ${isAssigned ? 'assigned' : ''} ${isAtMaximum && !isAssigned ? 'maximum-warning' : ''}" data-route-id="${route.id}">
+                ${isAssigned ? 'Unassign Me' : isAtMaximum ? 'Assign Me (Full)' : 'Assign Me'}
             </button>
         `;
         

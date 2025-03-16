@@ -201,4 +201,59 @@ button:hover {
 
 #logout-button:hover {
     background-color: #c0392b;
+}
+
+.info-message {
+    background-color: #e8f4f8;
+    border-left: 4px solid #3498db;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.info-message p {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.info-message strong {
+    color: #e74c3c;
+}
+
+.route-reminder {
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border-left: 4px solid #f39c12;
+}
+
+.route-reminder p {
+    margin: 0;
+    color: #555;
+    font-size: 14px;
+}
+
+.full-route {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+.route-at-maximum {
+    border-left: 4px solid #e74c3c;
+}
+
+.maximum-reached {
+    background-color: #e74c3c;
+}
+
+.maximum-warning {
+    background-color: #f39c12;
+}
+
+.maximum-warning:hover {
+    background-color: #e67e22;
 } 
