@@ -196,6 +196,54 @@ function showLogin() {
     nameInput.focus();
 }
 
+// Ensure people are User objects
+function ensurePeopleAreUserObjects(people) {
+    return people.map(person => {
+        if (typeof person === 'string') {
+            // Legacy format - just a name string
+            return { name: person, id: person.toLowerCase().replace(/\s+/g, '_') };
+        } else if (typeof person === 'object' && person !== null) {
+            // New format - user object with id
+            if (person.id) {
+                return person;
+            }
+            // New format - user object without id (need to generate one)
+            else if (person.name && person.email) {
+                const id = `${person.email.toLowerCase().replace(/[^a-z0-9]/g, '')}_${person.name.toLowerCase().replace(/\s+/g, '_')}`;
+                return { ...person, id };
+            }
+            // Partial user object
+            else if (person.name) {
+                return { name: person.name, id: person.name.toLowerCase().replace(/\s+/g, '_') };
+            }
+        }
+        // Fallback
+        return { name: 'Unknown', id: 'unknown' };
+    });
+}
+
+// Check if a user is assigned to a route
+function isUserAssignedToRoute(user, routePeople) {
+    if (!user || !routePeople) return false;
+    
+    const peopleObjects = ensurePeopleAreUserObjects(routePeople);
+    
+    // First try to match by ID (most accurate)
+    const matchById = peopleObjects.some(person => person.id === user.id);
+    if (matchById) return true;
+    
+    // If no ID match, try to match by email (for backward compatibility)
+    if (user.email) {
+        const matchByEmail = peopleObjects.some(person => 
+            person.email && person.email.toLowerCase() === user.email.toLowerCase()
+        );
+        if (matchByEmail) return true;
+    }
+    
+    // No match found
+    return false;
+}
+
 // Render all routes
 function renderRoutes() {
     routesContainer.innerHTML = '';
@@ -214,9 +262,7 @@ function renderRoutes() {
         const peopleObjects = ensurePeopleAreUserObjects(route.people || []);
         
         // Check if current user is assigned to this route
-        const isAssigned = currentUser && peopleObjects.some(person => 
-            person.id === currentUser.id
-        );
+        const isAssigned = currentUser && isUserAssignedToRoute(currentUser, peopleObjects);
         
         const peopleCount = peopleObjects.length;
         
@@ -233,7 +279,12 @@ function renderRoutes() {
                 <span class="route-count ${isAtMaximum ? 'maximum-reached' : ''}">${peopleCount} ${peopleCount === 1 ? 'person' : 'people'}</span>
             </div>
             <div class="route-people">
-                ${peopleObjects.map(person => `<span class="person-tag" title="${person.email || ''}">${person.name || person}</span>`).join('')}
+                ${peopleObjects.map(person => `
+                    <span class="person-tag" title="${person.email || ''}">
+                        ${person.name || person}
+                        ${person.email ? `<span class="person-email">(${person.email})</span>` : ''}
+                    </span>
+                `).join('')}
             </div>
             <button class="assign-button ${isAssigned ? 'assigned' : ''} ${isAtMaximum && !isAssigned ? 'maximum-warning' : ''}" data-route-id="${route.id}">
                 ${isAssigned ? 'Unassign Me' : isAtMaximum ? 'Assign Me (Full)' : 'Assign Me'}
@@ -246,22 +297,6 @@ function renderRoutes() {
     // Add event listeners to assign buttons
     document.querySelectorAll('.assign-button').forEach(button => {
         button.addEventListener('click', handleAssignment);
-    });
-}
-
-// Ensure people are User objects
-function ensurePeopleAreUserObjects(people) {
-    return people.map(person => {
-        if (typeof person === 'string') {
-            // Legacy format - just a name string
-            return { name: person, id: person.toLowerCase().replace(/\s+/g, '_') };
-        } else if (typeof person === 'object' && person !== null) {
-            // New format - user object
-            return person;
-        } else {
-            // Fallback
-            return { name: 'Unknown', id: 'unknown' };
-        }
     });
 }
 
@@ -281,24 +316,49 @@ function handleAssignment(event) {
     const peopleObjects = ensurePeopleAreUserObjects(route.people);
     
     // Check if current user is assigned to this route
-    const isAssigned = peopleObjects.some(person => person.id === currentUser.id);
+    const isAssigned = isUserAssignedToRoute(currentUser, peopleObjects);
     
     if (isAssigned) {
-        // Unassign user
-        route.people = peopleObjects.filter(person => person.id !== currentUser.id);
+        // Unassign user - remove by ID, email, or name (in that order of preference)
+        route.people = peopleObjects.filter(person => {
+            // If we have IDs for both, compare IDs
+            if (person.id && currentUser.id) {
+                return person.id !== currentUser.id;
+            }
+            // If we have emails for both, compare emails
+            else if (person.email && currentUser.email) {
+                return person.email.toLowerCase() !== currentUser.email.toLowerCase();
+            }
+            // Fallback to name comparison
+            else {
+                return person.name !== currentUser.name;
+            }
+        });
     } else {
         // Check if user is already assigned to another route
         const alreadyAssignedRoute = routes.find(r => {
             if (!r.people) return false;
-            const routePeople = ensurePeopleAreUserObjects(r.people);
-            return routePeople.some(person => person.id === currentUser.id);
+            return isUserAssignedToRoute(currentUser, r.people);
         });
         
         if (alreadyAssignedRoute) {
             if (confirm(`You are already assigned to "${alreadyAssignedRoute.name}". Do you want to switch to "${route.name}"?`)) {
                 // Remove from previous route
                 const routePeople = ensurePeopleAreUserObjects(alreadyAssignedRoute.people);
-                alreadyAssignedRoute.people = routePeople.filter(person => person.id !== currentUser.id);
+                alreadyAssignedRoute.people = routePeople.filter(person => {
+                    // If we have IDs for both, compare IDs
+                    if (person.id && currentUser.id) {
+                        return person.id !== currentUser.id;
+                    }
+                    // If we have emails for both, compare emails
+                    else if (person.email && currentUser.email) {
+                        return person.email.toLowerCase() !== currentUser.email.toLowerCase();
+                    }
+                    // Fallback to name comparison
+                    else {
+                        return person.name !== currentUser.name;
+                    }
+                });
                 updateRouteInFirebase(alreadyAssignedRoute);
                 
                 // Add to new route
