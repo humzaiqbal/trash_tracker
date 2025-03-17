@@ -111,6 +111,10 @@ function loadData() {
     routesRef.on('value', snapshot => {
         if (snapshot.exists()) {
             routes = Object.values(snapshot.val());
+            
+            // Fix any invalid data structures
+            fixInvalidRouteData();
+            
             renderRoutes();
         }
     });
@@ -131,6 +135,26 @@ function loadData() {
             console.error('Error parsing saved user data:', e);
             localStorage.removeItem('currentUser');
         }
+    }
+}
+
+// Fix invalid route data
+function fixInvalidRouteData() {
+    let hasInvalidData = false;
+    
+    routes.forEach(route => {
+        // Fix missing or invalid people array
+        if (!route.people || !Array.isArray(route.people)) {
+            console.warn(`Fixing invalid people data for route ${route.id} (${route.name}):`, route.people);
+            route.people = [];
+            hasInvalidData = true;
+        }
+    });
+    
+    // If we found and fixed invalid data, update Firebase
+    if (hasInvalidData) {
+        console.log('Fixing invalid route data in Firebase');
+        routesRef.set(routes);
     }
 }
 
@@ -198,6 +222,12 @@ function showLogin() {
 
 // Ensure people are User objects
 function ensurePeopleAreUserObjects(people) {
+    // Check if people is not an array or is null/undefined
+    if (!people || !Array.isArray(people)) {
+        console.warn('People is not an array:', people);
+        return [];
+    }
+    
     return people.map(person => {
         if (typeof person === 'string') {
             // Legacy format - just a name string
@@ -225,6 +255,12 @@ function ensurePeopleAreUserObjects(people) {
 // Check if a user is assigned to a route
 function isUserAssignedToRoute(user, routePeople) {
     if (!user || !routePeople) return false;
+    
+    // Ensure routePeople is an array
+    if (!Array.isArray(routePeople)) {
+        console.warn('routePeople is not an array:', routePeople);
+        return false;
+    }
     
     const peopleObjects = ensurePeopleAreUserObjects(routePeople);
     
@@ -255,6 +291,12 @@ function renderRoutes() {
     routesContainer.appendChild(reminderElement);
     
     routes.forEach(route => {
+        // Ensure route has a people property and it's an array
+        if (!route.people || !Array.isArray(route.people)) {
+            console.warn(`Route ${route.id} (${route.name}) has invalid people data:`, route.people);
+            route.people = [];
+        }
+        
         const routeCard = document.createElement('div');
         routeCard.className = 'route-card';
         
@@ -307,8 +349,8 @@ function handleAssignment(event) {
     
     if (!route || !currentUser) return;
     
-    // Initialize people array if it doesn't exist
-    if (!route.people) {
+    // Initialize people array if it doesn't exist or is not an array
+    if (!route.people || !Array.isArray(route.people)) {
         route.people = [];
     }
     
@@ -337,7 +379,7 @@ function handleAssignment(event) {
     } else {
         // Check if user is already assigned to another route
         const alreadyAssignedRoute = routes.find(r => {
-            if (!r.people) return false;
+            if (!r.people || !Array.isArray(r.people)) return false;
             return isUserAssignedToRoute(currentUser, r.people);
         });
         
@@ -383,6 +425,11 @@ function handleAssignment(event) {
 
 // Update a route in Firebase
 function updateRouteInFirebase(route) {
+    // Ensure route.people is an array before saving
+    if (!Array.isArray(route.people)) {
+        route.people = [];
+    }
+    
     routesRef.child(route.id - 1).update(route);
 }
 
