@@ -89,6 +89,9 @@ let routes = [
     { id: 6, name: '23rd Street from Mission and 23rd to 24th along Valencia', people: [] },
     { id: 7, name: '24th Street from Mission and 24th to 25th along Valencia', people: [] },
     { id: 8, name: 'Mission St from 19th to 23rd', people: [] },
+    { id: 9, name: 'San Carlos Street from 19th to 21st; Lexington street from 19th to 21st', people: [] },
+    { id: 10, name: 'Guerrero between 18th and Liberty Street; Liberty street from Guerrero to Valencia', people: [] },
+    { id: 11, name: 'Guerrero between Liberty Street and 22nd; Hill Street from Guerrero to Valencia', people: [] },
 ];
 
 // Firebase references
@@ -128,6 +131,9 @@ function loadData() {
                 // Fix any invalid data structures
                 fixInvalidRouteData();
                 
+                // Check for missing routes and add them
+                syncMissingRoutes();
+                
                 // Render routes after fixing
                 renderRoutes();
             } else {
@@ -146,10 +152,11 @@ function loadData() {
                 { id: 6, name: '23rd Street from Mission and 23rd to 24th along Valencia', people: [] },
                 { id: 7, name: '24th Street from Mission and 24th to 25th along Valencia', people: [] },
                 { id: 8, name: 'Mission St from 19th to 23rd', people: [] },
-                {id: 9, name: 'San Carlos Street from 19th to 21st; Lexington street from 19th to 21st', people: []},
-                {id: 10, name: 'Guerrero between 18th and Liberty Street; Liberty street from Guerrero to Valencia', people: [] },
-                {id: 11, name: 'Guerrero between Liberty Street and 22nd; Hill Street from Guerrero to Valencia', people: []},
+                { id: 9, name: 'San Carlos Street from 19th to 21st; Lexington street from 19th to 21st', people: [] },
+                { id: 10, name: 'Guerrero between 18th and Liberty Street; Liberty street from Guerrero to Valencia', people: [] },
+                { id: 11, name: 'Guerrero between Liberty Street and 22nd; Hill Street from Guerrero to Valencia', people: [] },
             ];
+            syncRoutesToFirebase(); // Push routes to Firebase
             renderRoutes();
         }
     }, error => {
@@ -565,6 +572,9 @@ function resetFirebaseDatabase() {
             { id: 6, name: '23rd Street from Mission and 23rd to 24th along Valencia', people: [] },
             { id: 7, name: '24th Street from Mission and 24th to 25th along Valencia', people: [] },
             { id: 8, name: 'Mission St from 19th to 23rd', people: [] },
+            { id: 9, name: 'San Carlos Street from 19th to 21st; Lexington street from 19th to 21st', people: [] },
+            { id: 10, name: 'Guerrero between 18th and Liberty Street; Liberty street from Guerrero to Valencia', people: [] },
+            { id: 11, name: 'Guerrero between Liberty Street and 22nd; Hill Street from Guerrero to Valencia', people: [] },
         ];
         
         // Reset routes in Firebase
@@ -598,6 +608,7 @@ function addDebugButton() {
             <button id="reset-database-button" class="debug-button">Reset Database</button>
             <button id="fix-data-button" class="debug-button">Fix Data Structure</button>
             <button id="show-data-button" class="debug-button">Show Raw Data</button>
+            <button id="sync-routes-button" class="debug-button">Force Sync Routes</button>
         </div>
     `;
     
@@ -616,6 +627,11 @@ function addDebugButton() {
         });
         alert('Raw data has been logged to the console. Press F12 to view.');
     });
+    document.getElementById('sync-routes-button').addEventListener('click', () => {
+        syncMissingRoutes();
+        alert('Routes synchronized. The page will now reload.');
+        window.location.reload();
+    });
     
     // Add debug styles
     const style = document.createElement('style');
@@ -633,6 +649,7 @@ function addDebugButton() {
         }
         .debug-buttons {
             display: flex;
+            flex-wrap: wrap;
             gap: 10px;
         }
         .debug-button {
@@ -657,4 +674,54 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeFirebase();
     loadData();
     addDebugButton(); // Add debug button if in debug mode
-}); 
+});
+
+// Sync any missing routes
+function syncMissingRoutes() {
+    const defaultRoutes = [
+        { id: 1, name: '18th Street from Mission to Guerrero and 18th to 19th along Valencia', people: [] },
+        { id: 2, name: '19th Street from Mission and 19th to 20th along Valencia', people: [] },
+        { id: 3, name: '20th Street from Mission and 20th to 21st along Valencia', people: [] },
+        { id: 4, name: '21st Street from Mission and 21st to 22nd along Valencia', people: [] },
+        { id: 5, name: '22nd Street from Mission and 22nd to 23rd along Valencia', people: [] },
+        { id: 6, name: '23rd Street from Mission and 23rd to 24th along Valencia', people: [] },
+        { id: 7, name: '24th Street from Mission and 24th to 25th along Valencia', people: [] },
+        { id: 8, name: 'Mission St from 19th to 23rd', people: [] },
+        { id: 9, name: 'San Carlos Street from 19th to 21st; Lexington street from 19th to 21st', people: [] },
+        { id: 10, name: 'Guerrero between 18th and Liberty Street; Liberty street from Guerrero to Valencia', people: [] },
+        { id: 11, name: 'Guerrero between Liberty Street and 22nd; Hill Street from Guerrero to Valencia', people: [] },
+    ];
+    
+    let routesChanged = false;
+    
+    // Check for missing routes by ID
+    defaultRoutes.forEach(defaultRoute => {
+        const existingRoute = routes.find(r => r.id === defaultRoute.id);
+        if (!existingRoute) {
+            console.log(`Adding missing route ID ${defaultRoute.id}: ${defaultRoute.name}`);
+            routes.push({...defaultRoute, people: []});
+            routesChanged = true;
+        }
+    });
+    
+    // Sort routes by ID
+    routes.sort((a, b) => a.id - b.id);
+    
+    // If we added any routes, update Firebase
+    if (routesChanged) {
+        console.log('Updating Firebase with missing routes');
+        syncRoutesToFirebase();
+    }
+}
+
+// Sync all routes to Firebase
+function syncRoutesToFirebase() {
+    console.log('Syncing all routes to Firebase');
+    routesRef.set(routes)
+        .then(() => {
+            console.log('Routes successfully synchronized with Firebase');
+        })
+        .catch(error => {
+            console.error('Error syncing routes to Firebase:', error);
+        });
+} 
