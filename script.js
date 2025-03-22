@@ -146,9 +146,9 @@ function loadData() {
                 { id: 6, name: '23rd Street from Mission and 23rd to 24th along Valencia', people: [] },
                 { id: 7, name: '24th Street from Mission and 24th to 25th along Valencia', people: [] },
                 { id: 8, name: 'Mission St from 19th to 23rd', people: [] },
-                {id: 9, name: 'San Carlos Street from 19th to 21st; Lexington street from 19th to 21st'},
-                {id: 10, name: 'Guerrero between 18th and Liberty Street; Liberty street from Guerrero to Valencia'},
-                {id: 11, name: 'Guerrero between Liberty Street and 22nd; Hill Street from Guerrero to Valencia'},
+                {id: 9, name: 'San Carlos Street from 19th to 21st; Lexington street from 19th to 21st', people: []},
+                {id: 10, name: 'Guerrero between 18th and Liberty Street; Liberty street from Guerrero to Valencia', people: [] },
+                {id: 11, name: 'Guerrero between Liberty Street and 22nd; Hill Street from Guerrero to Valencia', people: []},
             ];
             renderRoutes();
         }
