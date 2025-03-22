@@ -109,14 +109,52 @@ function initializeFirebase() {
 function loadData() {
     // Get routes from Firebase
     routesRef.on('value', snapshot => {
-        if (snapshot.exists()) {
-            routes = Object.values(snapshot.val());
-            
-            // Fix any invalid data structures
-            fixInvalidRouteData();
-            
+        try {
+            if (snapshot.exists()) {
+                console.log('Raw Firebase data:', snapshot.val());
+                
+                // Convert to array safely
+                const rawData = snapshot.val();
+                if (Array.isArray(rawData)) {
+                    routes = rawData;
+                } else if (typeof rawData === 'object' && rawData !== null) {
+                    // Handle object format (keys might be indices or route IDs)
+                    routes = Object.values(rawData);
+                } else {
+                    console.error('Unexpected data format from Firebase:', rawData);
+                    routes = [];
+                }
+                
+                // Fix any invalid data structures
+                fixInvalidRouteData();
+                
+                // Render routes after fixing
+                renderRoutes();
+            } else {
+                console.log('No data exists in Firebase, initializing with default routes');
+                routesRef.set(routes);
+            }
+        } catch (error) {
+            console.error('Error processing Firebase data:', error);
+            // Use default routes as fallback
+            routes = [
+                { id: 1, name: '18th Street from Mission to Guerrero and 18th to 19th along Valencia', people: [] },
+                { id: 2, name: '19th Street from Mission and 19th to 20th along Valencia', people: [] },
+                { id: 3, name: '20th Street from Mission and 20th to 21st along Valencia', people: [] },
+                { id: 4, name: '21st Street from Mission and 21st to 22nd along Valencia', people: [] },
+                { id: 5, name: '22nd Street from Mission and 22nd to 23rd along Valencia', people: [] },
+                { id: 6, name: '23rd Street from Mission and 23rd to 24th along Valencia', people: [] },
+                { id: 7, name: '24th Street from Mission and 24th to 25th along Valencia', people: [] },
+                { id: 8, name: 'Mission St from 19th to 23rd', people: [] },
+                {id: 9, name: 'San Carlos Street from 19th to 21st; Lexington street from 19th to 21st'},
+                {id: 10, name: 'Guerrero between 18th and Liberty Street; Liberty street from Guerrero to Valencia'},
+                {id: 11, name: 'Guerrero between Liberty Street and 22nd; Hill Street from Guerrero to Valencia'},
+            ];
             renderRoutes();
         }
+    }, error => {
+        console.error('Firebase data loading error:', error);
+        alert('There was an error loading route data. Please try refreshing the page.');
     });
     
     // Check if user is already logged in
@@ -124,12 +162,17 @@ function loadData() {
     if (savedUserData) {
         try {
             const userData = JSON.parse(savedUserData);
-            currentUser = new User(userData.name, userData.email);
-            
-            if (currentUser) {
-                nameInput.value = currentUser.name;
-                emailInput.value = currentUser.email;
-                showRoutes();
+            if (userData && userData.name && userData.email) {
+                currentUser = new User(userData.name, userData.email);
+                
+                if (currentUser) {
+                    nameInput.value = currentUser.name;
+                    emailInput.value = currentUser.email;
+                    showRoutes();
+                }
+            } else {
+                console.warn('Invalid user data in localStorage:', userData);
+                localStorage.removeItem('currentUser');
             }
         } catch (e) {
             console.error('Error parsing saved user data:', e);
@@ -142,12 +185,89 @@ function loadData() {
 function fixInvalidRouteData() {
     let hasInvalidData = false;
     
-    routes.forEach(route => {
+    // First, ensure routes is an array
+    if (!Array.isArray(routes)) {
+        console.error('Routes is not an array:', routes);
+        routes = [];
+        hasInvalidData = true;
+    }
+    
+    // Check each route
+    routes.forEach((route, index) => {
+        // Check if route is a valid object
+        if (!route || typeof route !== 'object') {
+            console.error(`Invalid route at index ${index}:`, route);
+            routes[index] = { 
+                id: index + 1, 
+                name: `Route ${index + 1}`, 
+                people: [] 
+            };
+            hasInvalidData = true;
+            return;
+        }
+        
+        // Ensure route has an id
+        if (!route.id) {
+            console.warn(`Route at index ${index} missing id:`, route);
+            route.id = index + 1;
+            hasInvalidData = true;
+        }
+        
+        // Ensure route has a name
+        if (!route.name) {
+            console.warn(`Route ${route.id} missing name:`, route);
+            route.name = `Route ${route.id}`;
+            hasInvalidData = true;
+        }
+        
         // Fix missing or invalid people array
         if (!route.people || !Array.isArray(route.people)) {
             console.warn(`Fixing invalid people data for route ${route.id} (${route.name}):`, route.people);
             route.people = [];
             hasInvalidData = true;
+        } else {
+            // Check each person in the people array
+            const validPeople = [];
+            route.people.forEach((person, personIndex) => {
+                if (!person) {
+                    console.warn(`Null or undefined person at index ${personIndex} in route ${route.id}`);
+                    return; // Skip this person
+                }
+                
+                if (typeof person === 'string') {
+                    // Convert string to object
+                    validPeople.push({ 
+                        name: person, 
+                        id: person.toLowerCase().replace(/\s+/g, '_') 
+                    });
+                } else if (typeof person === 'object') {
+                    // Ensure person has at least a name
+                    if (!person.name) {
+                        console.warn(`Person missing name in route ${route.id}:`, person);
+                        person.name = 'Unknown User';
+                    }
+                    
+                    // Ensure person has an id
+                    if (!person.id) {
+                        if (person.email) {
+                            person.id = `${person.email.toLowerCase().replace(/[^a-z0-9]/g, '')}_${person.name.toLowerCase().replace(/\s+/g, '_')}`;
+                        } else {
+                            person.id = person.name.toLowerCase().replace(/\s+/g, '_');
+                        }
+                    }
+                    
+                    validPeople.push(person);
+                } else {
+                    console.warn(`Invalid person data type at index ${personIndex} in route ${route.id}:`, person);
+                }
+            });
+            
+            // Replace the people array with the validated one
+            if (validPeople.length !== route.people.length) {
+                console.warn(`Fixed people array for route ${route.id}, removed ${route.people.length - validPeople.length} invalid entries`);
+                route.people = validPeople;
+                hasInvalidData = true;
+            }
         }
     });
     
@@ -433,10 +553,108 @@ function updateRouteInFirebase(route) {
     routesRef.child(route.id - 1).update(route);
 }
 
+// Reset Firebase database to default values
+function resetFirebaseDatabase() {
+    if (confirm('WARNING: This will reset all route data to default values and remove all user assignments. Are you sure?')) {
+        const defaultRoutes = [
+            { id: 1, name: '18th Street from Mission to Guerrero and 18th to 19th along Valencia', people: [] },
+            { id: 2, name: '19th Street from Mission and 19th to 20th along Valencia', people: [] },
+            { id: 3, name: '20th Street from Mission and 20th to 21st along Valencia', people: [] },
+            { id: 4, name: '21st Street from Mission and 21st to 22nd along Valencia', people: [] },
+            { id: 5, name: '22nd Street from Mission and 22nd to 23rd along Valencia', people: [] },
+            { id: 6, name: '23rd Street from Mission and 23rd to 24th along Valencia', people: [] },
+            { id: 7, name: '24th Street from Mission and 24th to 25th along Valencia', people: [] },
+            { id: 8, name: 'Mission St from 19th to 23rd', people: [] },
+        ];
+        
+        // Reset routes in Firebase
+        routesRef.set(defaultRoutes)
+            .then(() => {
+                console.log('Firebase database reset successfully');
+                alert('Database reset successfully. The page will now reload.');
+                window.location.reload();
+            })
+            .catch(error => {
+                console.error('Error resetting Firebase database:', error);
+                alert('Error resetting database: ' + error.message);
+            });
+    }
+}
+
+// Add debug button to UI
+function addDebugButton() {
+    // Only add in development or if there's a URL parameter
+    const isDebugMode = window.location.search.includes('debug=true');
+    if (!isDebugMode) return;
+    
+    const container = document.querySelector('.container');
+    if (!container) return;
+    
+    const debugSection = document.createElement('div');
+    debugSection.className = 'debug-section';
+    debugSection.innerHTML = `
+        <h3>Debug Tools</h3>
+        <div class="debug-buttons">
+            <button id="reset-database-button" class="debug-button">Reset Database</button>
+            <button id="fix-data-button" class="debug-button">Fix Data Structure</button>
+            <button id="show-data-button" class="debug-button">Show Raw Data</button>
+        </div>
+    `;
+    
+    container.appendChild(debugSection);
+    
+    // Add event listeners
+    document.getElementById('reset-database-button').addEventListener('click', resetFirebaseDatabase);
+    document.getElementById('fix-data-button').addEventListener('click', () => {
+        fixInvalidRouteData();
+        alert('Data structure check completed. Check console for details.');
+    });
+    document.getElementById('show-data-button').addEventListener('click', () => {
+        console.log('Current routes data:', routes);
+        routesRef.once('value', snapshot => {
+            console.log('Raw Firebase data:', snapshot.val());
+        });
+        alert('Raw data has been logged to the console. Press F12 to view.');
+    });
+    
+    // Add debug styles
+    const style = document.createElement('style');
+    style.textContent = `
+        .debug-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+        }
+        .debug-section h3 {
+            color: #721c24;
+            margin-bottom: 10px;
+        }
+        .debug-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .debug-button {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .debug-button:hover {
+            background-color: #c82333;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
 // Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM fully loaded');
     initDOMElements();
     initializeFirebase();
     loadData();
+    addDebugButton(); // Add debug button if in debug mode
 }); 
