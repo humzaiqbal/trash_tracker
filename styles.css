@@ -297,4 +297,72 @@ button:hover {
 #login-button {
     margin-top: 10px;
     align-self: flex-start;
+}
+
+/* Anonymous group controls */
+.assign-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.anonymous-group-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 0;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+}
+
+.anonymous-label {
+    font-size: 14px;
+    color: #555;
+    margin-right: 5px;
+}
+
+.anonymous-count {
+    font-weight: bold;
+    padding: 0 5px;
+    min-width: 24px;
+    text-align: center;
+}
+
+.anonymous-button {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #3498db;
+    color: white;
+    font-size: 16px;
+    line-height: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+}
+
+.anonymous-button:hover {
+    background-color: #2980b9;
+}
+
+.anonymous-button.decrease-button {
+    background-color: #e74c3c;
+}
+
+.anonymous-button.decrease-button:hover {
+    background-color: #c0392b;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.person-group-count {
+    font-weight: bold;
+    color: #e74c3c;
+    margin-left: 3px;
 } 

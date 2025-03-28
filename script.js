@@ -433,7 +433,19 @@ function renderRoutes() {
         // Check if current user is assigned to this route
         const isAssigned = currentUser && isUserAssignedToRoute(currentUser, peopleObjects);
         
-        const peopleCount = peopleObjects.length;
+        // Count the number of anonymous people associated with the current user
+        let anonymousCount = 0;
+        if (isAssigned && currentUser) {
+            const currentUserEntry = peopleObjects.find(person => 
+                person.id === currentUser.id || 
+                (person.email && person.email.toLowerCase() === currentUser.email.toLowerCase())
+            );
+            if (currentUserEntry && currentUserEntry.anonymousCount) {
+                anonymousCount = currentUserEntry.anonymousCount;
+            }
+        }
+        
+        const peopleCount = peopleObjects.length + getAnonymousTotalForRoute(peopleObjects);
         
         // Check if route has reached or exceeded the recommended maximum
         const isAtMaximum = peopleCount >= 5;
@@ -442,22 +454,47 @@ function renderRoutes() {
             routeCard.classList.add('route-at-maximum');
         }
         
+        let assignButtonHtml = '';
+        if (isAssigned) {
+            assignButtonHtml = `
+                <div class="assign-actions">
+                    <div class="anonymous-group-controls ${isAssigned ? '' : 'hidden'}">
+                        <span class="anonymous-label">Group Members: </span>
+                        <button class="anonymous-button decrease-button" data-route-id="${route.id}">-</button>
+                        <span class="anonymous-count">${anonymousCount}</span>
+                        <button class="anonymous-button increase-button" data-route-id="${route.id}">+</button>
+                    </div>
+                    <button class="assign-button assigned" data-route-id="${route.id}">Unassign Me</button>
+                </div>
+            `;
+        } else {
+            assignButtonHtml = `
+                <div class="assign-actions">
+                    <button class="assign-button ${isAtMaximum && !isAssigned ? 'maximum-warning' : ''}" data-route-id="${route.id}">
+                        ${isAtMaximum ? 'Assign Me (Full)' : 'Assign Me'}
+                    </button>
+                </div>
+            `;
+        }
+        
         routeCard.innerHTML = `
             <div class="route-header">
                 <span class="route-name">${route.name} <span class="route-count-inline ${isAtMaximum ? 'maximum-reached' : ''}">(${peopleCount} ${peopleCount === 1 ? 'person' : 'people'})</span></span>
                 <span class="route-count ${isAtMaximum ? 'maximum-reached' : ''}">${peopleCount} ${peopleCount === 1 ? 'person' : 'people'}</span>
             </div>
             <div class="route-people">
-                ${peopleObjects.map(person => `
-                    <span class="person-tag" title="${person.email || ''}">
-                        ${person.name || person}
-                        ${person.email ? `<span class="person-email">(${person.email})</span>` : ''}
-                    </span>
-                `).join('')}
+                ${peopleObjects.map(person => {
+                    let personText = `${person.name || person}`;
+                    if (person.email) {
+                        personText += `<span class="person-email">(${person.email})</span>`;
+                    }
+                    if (person.anonymousCount && person.anonymousCount > 0) {
+                        personText += `<span class="person-group-count">+${person.anonymousCount}</span>`;
+                    }
+                    return `<span class="person-tag" title="${person.email || ''}">${personText}</span>`;
+                }).join('')}
             </div>
-            <button class="assign-button ${isAssigned ? 'assigned' : ''} ${isAtMaximum && !isAssigned ? 'maximum-warning' : ''}" data-route-id="${route.id}">
-                ${isAssigned ? 'Unassign Me' : isAtMaximum ? 'Assign Me (Full)' : 'Assign Me'}
-            </button>
+            ${assignButtonHtml}
         `;
         
         routesContainer.appendChild(routeCard);
@@ -466,6 +503,11 @@ function renderRoutes() {
     // Add event listeners to assign buttons
     document.querySelectorAll('.assign-button').forEach(button => {
         button.addEventListener('click', handleAssignment);
+    });
+    
+    // Add event listeners to anonymous group buttons
+    document.querySelectorAll('.anonymous-button').forEach(button => {
+        button.addEventListener('click', handleAnonymousGroupChange);
     });
 }
 
@@ -488,6 +530,15 @@ function handleAssignment(event) {
     const isAssigned = isUserAssignedToRoute(currentUser, peopleObjects);
     
     if (isAssigned) {
+        // Get the user entry to preserve any anonymous count
+        const userEntry = peopleObjects.find(person =>
+            person.id === currentUser.id ||
+            (person.email && person.email.toLowerCase() === currentUser.email.toLowerCase())
+        );
+        
+        // Store the anonymous count
+        const anonymousCount = userEntry && userEntry.anonymousCount ? userEntry.anonymousCount : 0;
+        
         // Unassign user - remove by ID, email, or name (in that order of preference)
         route.people = peopleObjects.filter(person => {
             // If we have IDs for both, compare IDs
@@ -512,8 +563,17 @@ function handleAssignment(event) {
         
         if (alreadyAssignedRoute) {
             if (confirm(`You are already assigned to "${alreadyAssignedRoute.name}". Do you want to switch to "${route.name}"?`)) {
-                // Remove from previous route
+                // Find the current user entry to preserve any anonymous count
                 const routePeople = ensurePeopleAreUserObjects(alreadyAssignedRoute.people);
+                const userEntry = routePeople.find(person =>
+                    person.id === currentUser.id ||
+                    (person.email && person.email.toLowerCase() === currentUser.email.toLowerCase())
+                );
+                
+                // Store the anonymous count
+                const anonymousCount = userEntry && userEntry.anonymousCount ? userEntry.anonymousCount : 0;
+                
+                // Remove from previous route
                 alreadyAssignedRoute.people = routePeople.filter(person => {
                     // If we have IDs for both, compare IDs
                     if (person.id && currentUser.id) {
@@ -530,19 +590,21 @@ function handleAssignment(event) {
                 });
                 updateRouteInFirebase(alreadyAssignedRoute);
                 
-                // Add to new route
+                // Add to new route with the same anonymous count
                 route.people.push({
                     name: currentUser.name,
                     email: currentUser.email,
-                    id: currentUser.id
+                    id: currentUser.id,
+                    anonymousCount: anonymousCount
                 });
             }
         } else {
-            // Assign user to route
+            // Assign user to route (no anonymous members initially)
             route.people.push({
                 name: currentUser.name,
                 email: currentUser.email,
-                id: currentUser.id
+                id: currentUser.id,
+                anonymousCount: 0
             });
         }
     }
@@ -724,4 +786,61 @@ function syncRoutesToFirebase() {
         .catch(error => {
             console.error('Error syncing routes to Firebase:', error);
         });
+}
+
+// Get total anonymous people count for a route
+function getAnonymousTotalForRoute(peopleObjects) {
+    return peopleObjects.reduce((sum, person) => {
+        return sum + (person.anonymousCount || 0);
+    }, 0);
+}
+
+// Handle anonymous group member count changes
+function handleAnonymousGroupChange(event) {
+    const routeId = parseInt(event.target.getAttribute('data-route-id'));
+    const route = routes.find(r => r.id === routeId);
+    
+    if (!route || !currentUser) return;
+    
+    // Initialize people array if it doesn't exist or is not an array
+    if (!route.people || !Array.isArray(route.people)) {
+        route.people = [];
+    }
+    
+    // Convert people array to User objects if they're not already
+    const peopleObjects = ensurePeopleAreUserObjects(route.people);
+    
+    // Find the current user in the people array
+    const userIndex = peopleObjects.findIndex(person => 
+        person.id === currentUser.id ||
+        (person.email && person.email.toLowerCase() === currentUser.email.toLowerCase())
+    );
+    
+    if (userIndex === -1) {
+        console.error('User not found in route people array');
+        return;
+    }
+    
+    // Get the user object
+    const userObject = peopleObjects[userIndex];
+    
+    // Initialize anonymous count if it doesn't exist
+    if (!userObject.anonymousCount) {
+        userObject.anonymousCount = 0;
+    }
+    
+    // Increase or decrease the anonymous count
+    if (event.target.classList.contains('increase-button')) {
+        userObject.anonymousCount++;
+    } else if (event.target.classList.contains('decrease-button')) {
+        if (userObject.anonymousCount > 0) {
+            userObject.anonymousCount--;
+        }
+    }
+    
+    // Update the route
+    route.people[userIndex] = userObject;
+    
+    // Update the route in Firebase
+    updateRouteInFirebase(route);
 } 
