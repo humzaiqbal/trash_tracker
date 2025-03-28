@@ -334,6 +334,21 @@ function showRoutes() {
     document.querySelector('.login-section').classList.add('hidden');
     routesSection.classList.remove('hidden');
     currentUserDisplay.textContent = `Logged in as: ${currentUser.getDisplayName()}`;
+    
+    // Add privacy notice about email usage
+    const privacyNotice = document.createElement('div');
+    privacyNotice.className = 'privacy-notice';
+    privacyNotice.innerHTML = `
+        <p>Your email is used for identification but is not shared with other users.<br>
+        Your name tag is highlighted for your reference.</p>
+    `;
+    
+    // Insert after the header-with-logout div
+    const headerElement = routesSection.querySelector('.header-with-logout');
+    if (headerElement) {
+        headerElement.parentNode.insertBefore(privacyNotice, headerElement.nextSibling);
+    }
+    
     renderRoutes();
 }
 
@@ -485,13 +500,24 @@ function renderRoutes() {
             <div class="route-people">
                 ${peopleObjects.map(person => {
                     let personText = `${person.name || person}`;
-                    if (person.email) {
+                    
+                    // Only show email for the current user (for their own reference)
+                    if (currentUser && person.email && person.id === currentUser.id) {
                         personText += `<span class="person-email">(${person.email})</span>`;
                     }
+                    
                     if (person.anonymousCount && person.anonymousCount > 0) {
                         personText += `<span class="person-group-count">+${person.anonymousCount}</span>`;
                     }
-                    return `<span class="person-tag" title="${person.email || ''}">${personText}</span>`;
+                    
+                    // Keep email in the title attribute for hover tooltip, but only for the current user
+                    const titleText = (currentUser && person.id === currentUser.id) ? person.email || '' : '';
+                    
+                    // Add a special class to highlight the current user's tag
+                    const isCurrentUser = currentUser && person.id === currentUser.id;
+                    const personClass = isCurrentUser ? 'person-tag current-user' : 'person-tag';
+                    
+                    return `<span class="${personClass}" title="${titleText}">${personText}</span>`;
                 }).join('')}
             </div>
             ${assignButtonHtml}
