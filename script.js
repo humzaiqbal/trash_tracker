@@ -101,9 +101,56 @@ const usersRef = database.ref('users');
 // Initialize data in Firebase if it doesn't exist
 function initializeFirebase() {
     routesRef.once('value', snapshot => {
+        // Check if there are issues with the data structure
+        let needsReset = false;
+        
         if (!snapshot.exists()) {
             // If routes don't exist in Firebase, initialize them
-            routesRef.set(routes);
+            needsReset = true;
+        } else {
+            // Check if the existing data has valid structure
+            const data = snapshot.val();
+            if (Array.isArray(data)) {
+                // Check if all routes have properly initialized people arrays
+                data.forEach(route => {
+                    if (!route.people || !Array.isArray(route.people)) {
+                        console.warn(`Route ${route.id} (${route.name}) has invalid people data, needs reset`);
+                        needsReset = true;
+                    }
+                });
+            } else {
+                // Data is not an array, needs reset
+                console.warn('Firebase data is not in the expected format, needs reset');
+                needsReset = true;
+            }
+        }
+        
+        if (needsReset) {
+            console.log('Initializing Firebase with default routes');
+            
+            // Make sure each route has a properly initialized people array
+            const defaultRoutes = [
+                { id: 1, name: '18th Street from Mission to Guerrero and 18th to 19th along Valencia', people: [] },
+                { id: 2, name: '19th Street from Mission to Guerrero and 19th to 20th along Valencia', people: [] },
+                { id: 3, name: '20th Street from Mission to Guerrero and 20th to 21st along Valencia', people: [] },
+                { id: 4, name: '21st Street from Mission to Guerrero and 21st to 22nd along Valencia', people: [] },
+                { id: 5, name: '22nd Street from Mission to Guerrero and 22nd to 23rd along Valencia', people: [] },
+                { id: 6, name: '23rd Street from Mission to Guerrero and 23rd to 24th along Valencia', people: [] },
+                { id: 7, name: '24th Street from Mission to Guerrero and 24th to 25th along Valencia', people: [] },
+                { id: 8, name: 'Mission St from 19th to 23rd', people: [] },
+                { id: 9, name: 'San Carlos Street from 19th to 21st; Lexington street from 19th to 21st', people: [] },
+                { id: 10, name: 'Guerrero between 18th and Liberty Street; Liberty street from Guerrero to Valencia', people: [] },
+                { id: 11, name: 'Guerrero between Liberty Street and 22nd; Hill Street from Guerrero to Valencia', people: [] },
+            ];
+            
+            // Set the routes in Firebase
+            routesRef.set(defaultRoutes)
+                .then(() => {
+                    console.log('Firebase successfully initialized with default routes');
+                })
+                .catch(error => {
+                    console.error('Error initializing Firebase:', error);
+                });
         }
     });
 }
@@ -120,12 +167,20 @@ function loadData() {
                 const rawData = snapshot.val();
                 if (Array.isArray(rawData)) {
                     routes = rawData;
+                    console.log('Firebase data loaded as array with', routes.length, 'routes');
                 } else if (typeof rawData === 'object' && rawData !== null) {
                     // Handle object format (keys might be indices or route IDs)
                     routes = Object.values(rawData);
+                    console.log('Firebase data loaded as object with', routes.length, 'routes');
                 } else {
                     console.error('Unexpected data format from Firebase:', rawData);
                     routes = [];
+                }
+                
+                // Check if all routes have people arrays
+                const missingPeopleArrays = routes.filter(r => !r.people || !Array.isArray(r.people));
+                if (missingPeopleArrays.length > 0) {
+                    console.warn(`${missingPeopleArrays.length} routes have missing or invalid people arrays, will fix`);
                 }
                 
                 // Fix any invalid data structures
@@ -138,11 +193,12 @@ function loadData() {
                 renderRoutes();
             } else {
                 console.log('No data exists in Firebase, initializing with default routes');
-                routesRef.set(routes);
+                syncRoutesToFirebase(); // Use our current routes array to initialize Firebase
             }
         } catch (error) {
             console.error('Error processing Firebase data:', error);
-            // Use default routes as fallback
+            // Use default routes as fallback and push to Firebase to fix the issue
+            console.log('Using default routes as fallback due to error');
             routes = [
                 { id: 1, name: '18th Street from Mission to Guerrero and 18th to 19th along Valencia', people: [] },
                 { id: 2, name: '19th Street from Mission to Guerrero and 19th to 20th along Valencia', people: [] },
@@ -161,7 +217,7 @@ function loadData() {
         }
     }, error => {
         console.error('Firebase data loading error:', error);
-        alert('There was an error loading route data. Please try refreshing the page.');
+        alert('There was an error loading route data. Please try refreshing the page. If the issue persists, try adding ?debug=true to the URL to access repair tools.');
     });
     
     // Check if user is already logged in
@@ -697,7 +753,9 @@ function addDebugButton() {
             <button id="fix-data-button" class="debug-button">Fix Data Structure</button>
             <button id="show-data-button" class="debug-button">Show Raw Data</button>
             <button id="sync-routes-button" class="debug-button">Force Sync Routes</button>
+            <a href="?repair=true" class="debug-button repair-link">Full Database Repair</a>
         </div>
+        <p class="debug-note">Use Full Database Repair if you're seeing errors with the data structure. This will attempt to preserve user assignments while rebuilding the database.</p>
     `;
     
     container.appendChild(debugSection);
@@ -739,6 +797,7 @@ function addDebugButton() {
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
+            margin-bottom: 10px;
         }
         .debug-button {
             background-color: #dc3545;
@@ -747,9 +806,23 @@ function addDebugButton() {
             padding: 8px 12px;
             border-radius: 4px;
             cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
         }
         .debug-button:hover {
             background-color: #c82333;
+        }
+        .repair-link {
+            background-color: #28a745;
+        }
+        .repair-link:hover {
+            background-color: #218838;
+        }
+        .debug-note {
+            font-size: 12px;
+            color: #721c24;
+            margin-top: 5px;
         }
     `;
     document.head.appendChild(style);
@@ -759,10 +832,141 @@ function addDebugButton() {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM fully loaded');
     initDOMElements();
-    initializeFirebase();
-    loadData();
+    
+    // Check for automatic repair mode
+    if (window.location.search.includes('repair=true')) {
+        repairDatabase();
+    } else {
+        initializeFirebase();
+        loadData();
+    }
+    
     addDebugButton(); // Add debug button if in debug mode
 });
+
+// Repair database function
+function repairDatabase() {
+    console.log('Automatic database repair initiated...');
+    
+    // Create a notification to show the user what's happening
+    const repairNotification = document.createElement('div');
+    repairNotification.className = 'repair-notification';
+    repairNotification.innerHTML = `
+        <h2>Database Repair in Progress</h2>
+        <p>We detected an issue with the database structure and are automatically repairing it.</p>
+        <p>This will reset any problematic route data to its default state while preserving user assignments when possible.</p>
+        <p>Status: <span id="repair-status">Initializing...</span></p>
+    `;
+    document.querySelector('.container').appendChild(repairNotification);
+    
+    const statusElement = document.getElementById('repair-status');
+    
+    // Step 1: Get current data
+    statusElement.textContent = 'Loading current data...';
+    
+    routesRef.once('value')
+        .then(snapshot => {
+            statusElement.textContent = 'Repairing route structure...';
+            
+            let currentData = [];
+            let existingAssignments = {};
+            
+            // Gather existing assignments if possible
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                
+                // Try to extract user assignments from existing data
+                if (Array.isArray(data)) {
+                    currentData = data;
+                } else if (typeof data === 'object' && data !== null) {
+                    currentData = Object.values(data);
+                }
+                
+                // Save existing people assignments
+                currentData.forEach(route => {
+                    if (route && route.id && route.people && Array.isArray(route.people)) {
+                        existingAssignments[route.id] = route.people;
+                    }
+                });
+            }
+            
+            // Create repaired routes with proper structure
+            const defaultRoutes = [
+                { id: 1, name: '18th Street from Mission to Guerrero and 18th to 19th along Valencia', people: [] },
+                { id: 2, name: '19th Street from Mission to Guerrero and 19th to 20th along Valencia', people: [] },
+                { id: 3, name: '20th Street from Mission to Guerrero and 20th to 21st along Valencia', people: [] },
+                { id: 4, name: '21st Street from Mission to Guerrero and 21st to 22nd along Valencia', people: [] },
+                { id: 5, name: '22nd Street from Mission to Guerrero and 22nd to 23rd along Valencia', people: [] },
+                { id: 6, name: '23rd Street from Mission to Guerrero and 23rd to 24th along Valencia', people: [] },
+                { id: 7, name: '24th Street from Mission to Guerrero and 24th to 25th along Valencia', people: [] },
+                { id: 8, name: 'Mission St from 19th to 23rd', people: [] },
+                { id: 9, name: 'San Carlos Street from 19th to 21st; Lexington street from 19th to 21st', people: [] },
+                { id: 10, name: 'Guerrero between 18th and Liberty Street; Liberty street from Guerrero to Valencia', people: [] },
+                { id: 11, name: 'Guerrero between Liberty Street and 22nd; Hill Street from Guerrero to Valencia', people: [] },
+            ];
+            
+            statusElement.textContent = 'Restoring user assignments...';
+            
+            // Restore existing people assignments where possible
+            defaultRoutes.forEach(route => {
+                if (existingAssignments[route.id]) {
+                    try {
+                        // Validate each person entry
+                        const validPeople = [];
+                        existingAssignments[route.id].forEach(person => {
+                            if (typeof person === 'string') {
+                                // Convert string to object
+                                validPeople.push({ 
+                                    name: person, 
+                                    id: person.toLowerCase().replace(/\s+/g, '_') 
+                                });
+                            } else if (person && typeof person === 'object') {
+                                if (person.name) {
+                                    // Ensure proper format
+                                    const validPerson = {
+                                        name: person.name,
+                                        id: person.id || person.name.toLowerCase().replace(/\s+/g, '_')
+                                    };
+                                    
+                                    if (person.email) {
+                                        validPerson.email = person.email;
+                                    }
+                                    
+                                    if (person.anonymousCount && !isNaN(person.anonymousCount)) {
+                                        validPerson.anonymousCount = person.anonymousCount;
+                                    }
+                                    
+                                    validPeople.push(validPerson);
+                                }
+                            }
+                        });
+                        route.people = validPeople;
+                    } catch (e) {
+                        console.error(`Error restoring assignments for route ${route.id}:`, e);
+                        route.people = []; // Reset if restoration fails
+                    }
+                }
+            });
+            
+            statusElement.textContent = 'Updating database...';
+            
+            // Update Firebase with repaired data
+            return routesRef.set(defaultRoutes);
+        })
+        .then(() => {
+            statusElement.textContent = 'Repair complete! Reloading...';
+            console.log('Database repair completed successfully');
+            
+            // Reload the page without the repair parameter after a short delay
+            setTimeout(() => {
+                window.location.href = window.location.pathname;
+            }, 3000);
+        })
+        .catch(error => {
+            statusElement.textContent = `Error: ${error.message}`;
+            console.error('Error during database repair:', error);
+        });
+}
 
 // Sync any missing routes
 function syncMissingRoutes() {
