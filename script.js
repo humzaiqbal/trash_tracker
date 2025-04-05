@@ -395,7 +395,7 @@ function showRoutes() {
     const privacyNotice = document.createElement('div');
     privacyNotice.className = 'privacy-notice';
     privacyNotice.innerHTML = `
-        <p>Your email is used for identification but is not shared with other users.<br>
+        <p>While your name is visible to everyone, your email is private and only visible to you.<br>
         Your name tag is highlighted for your reference.</p>
     `;
     
@@ -548,33 +548,38 @@ function renderRoutes() {
             `;
         }
         
+        // Generate HTML for all people tags
+        const peopleTagsHtml = peopleObjects.map(person => {
+            // Only show email for the current user (for their own reference)
+            let personText = `${person.name || person}`;
+            
+            // Add email for the current user only
+            if (currentUser && person.email && person.id === currentUser.id) {
+                personText += `<span class="person-email">(${person.email})</span>`;
+            }
+            
+            // Add anonymous count if present
+            if (person.anonymousCount && person.anonymousCount > 0) {
+                personText += `<span class="person-group-count">+${person.anonymousCount}</span>`;
+            }
+            
+            // Keep email in the title attribute for hover tooltip, but only for the current user
+            const titleText = (currentUser && person.id === currentUser.id) ? person.email || '' : '';
+            
+            // Add a special class to highlight the current user's tag
+            const isCurrentUser = currentUser && person.id === currentUser.id;
+            const personClass = isCurrentUser ? 'person-tag current-user' : 'person-tag';
+            
+            return `<span class="${personClass}" title="${titleText}">${personText}</span>`;
+        }).join('');
+        
         routeCard.innerHTML = `
             <div class="route-header">
                 <span class="route-name">${route.name} <span class="route-count-inline ${isAtMaximum ? 'maximum-reached' : ''}">(${peopleCount} ${peopleCount === 1 ? 'person' : 'people'})</span></span>
                 <span class="route-count ${isAtMaximum ? 'maximum-reached' : ''}">${peopleCount} ${peopleCount === 1 ? 'person' : 'people'}</span>
             </div>
             <div class="route-people">
-                ${peopleObjects.map(person => {
-                    let personText = `${person.name || person}`;
-                    
-                    // Only show email for the current user (for their own reference)
-                    if (currentUser && person.email && person.id === currentUser.id) {
-                        personText += `<span class="person-email">(${person.email})</span>`;
-                    }
-                    
-                    if (person.anonymousCount && person.anonymousCount > 0) {
-                        personText += `<span class="person-group-count">+${person.anonymousCount}</span>`;
-                    }
-                    
-                    // Keep email in the title attribute for hover tooltip, but only for the current user
-                    const titleText = (currentUser && person.id === currentUser.id) ? person.email || '' : '';
-                    
-                    // Add a special class to highlight the current user's tag
-                    const isCurrentUser = currentUser && person.id === currentUser.id;
-                    const personClass = isCurrentUser ? 'person-tag current-user' : 'person-tag';
-                    
-                    return `<span class="${personClass}" title="${titleText}">${personText}</span>`;
-                }).join('')}
+                ${peopleTagsHtml}
             </div>
             ${assignButtonHtml}
         `;
