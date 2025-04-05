@@ -1142,25 +1142,14 @@ function generateQRCode() {
     qrContainer.innerHTML = '';
     qrModalContainer.innerHTML = '';
     
-    // Generate QR code options
-    const qrOptions = {
-        errorCorrectionLevel: 'H',
-        margin: 1,
-        width: 200,
-        color: {
-            dark: '#3498db',
-            light: '#ffffff'
-        }
-    };
-    
-    // Generate QR code
     try {
         // Check if we're on a mobile device
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         
-        if (isMobile) {
-            // Show in modal for mobile
-            QRCode.toDataURL(currentUrl, qrOptions, function (error, url) {
+        // Create a simple function to generate and display the QR code
+        const createQRCode = (container, callback) => {
+            // Generate QR code as data URL without options first (most compatible)
+            QRCode.toDataURL(currentUrl, (error, url) => {
                 if (error) {
                     console.error('Error generating QR code:', error);
                     alert('Error generating QR code. Please try again.');
@@ -1172,32 +1161,27 @@ function generateQRCode() {
                     img.style.maxWidth = '100%';
                     
                     // Clear the container and append the image
-                    qrModalContainer.innerHTML = '';
-                    qrModalContainer.appendChild(img);
-                    qrModal.classList.remove('hidden');
+                    container.innerHTML = '';
+                    container.appendChild(img);
                     
-                    // Make the QR code in modal tappable to save
-                    img.addEventListener('click', saveQRCode);
+                    if (callback) callback();
                 }
+            });
+        };
+        
+        if (isMobile) {
+            // Show in modal for mobile
+            createQRCode(qrModalContainer, () => {
+                qrModal.classList.remove('hidden');
+                
+                // Make the QR code in modal tappable to save
+                const img = qrModalContainer.querySelector('img');
+                if (img) img.addEventListener('click', saveQRCode);
             });
         } else {
             // Show inline for desktop
-            QRCode.toDataURL(currentUrl, qrOptions, function (error, url) {
-                if (error) {
-                    console.error('Error generating QR code:', error);
-                    alert('Error generating QR code. Please try again.');
-                } else {
-                    // Create an image from the data URL
-                    const img = document.createElement('img');
-                    img.src = url;
-                    img.alt = 'QR Code for Route Assignment Tracker';
-                    img.style.maxWidth = '100%';
-                    
-                    // Clear the container and append the image
-                    qrContainer.innerHTML = '';
-                    qrContainer.appendChild(img);
-                    qrCodeContainer.classList.remove('hidden');
-                }
+            createQRCode(qrContainer, () => {
+                qrCodeContainer.classList.remove('hidden');
             });
         }
     } catch (error) {
