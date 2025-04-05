@@ -7,6 +7,14 @@ let routesContainer;
 let logoutButton;
 let currentUserDisplay;
 
+// QR Code Variables
+let generateQRButton;
+let saveQRButton;
+let closeQRButton;
+let qrCodeContainer;
+let qrModal;
+let closeModalButton;
+
 // Initialize DOM elements
 function initDOMElements() {
     nameInput = document.getElementById('name-input');
@@ -19,6 +27,9 @@ function initDOMElements() {
     
     // Debug DOM elements
     console.log('Logout button element:', logoutButton);
+    
+    // Initialize QR code elements
+    initQRCodeElements();
     
     // Set up event listeners
     setupEventListeners();
@@ -1078,4 +1089,147 @@ function handleAnonymousGroupChange(event) {
     
     // Update the route in Firebase
     updateRouteInFirebase(route);
+}
+
+// Initialize QR Code DOM elements
+function initQRCodeElements() {
+    generateQRButton = document.getElementById('generate-qr-button');
+    saveQRButton = document.getElementById('save-qr-button');
+    closeQRButton = document.getElementById('close-qr-button');
+    qrCodeContainer = document.getElementById('qr-code-container');
+    qrModal = document.getElementById('qr-modal');
+    closeModalButton = document.querySelector('.close-modal');
+    
+    // Set up QR code event listeners
+    setupQRCodeEventListeners();
+}
+
+// Set up QR code event listeners
+function setupQRCodeEventListeners() {
+    if (generateQRButton) {
+        generateQRButton.addEventListener('click', generateQRCode);
+    }
+    
+    if (saveQRButton) {
+        saveQRButton.addEventListener('click', saveQRCode);
+    }
+    
+    if (closeQRButton) {
+        closeQRButton.addEventListener('click', hideQRCode);
+    }
+    
+    if (closeModalButton) {
+        closeModalButton.addEventListener('click', () => {
+            qrModal.classList.add('hidden');
+        });
+    }
+    
+    // Close modal when clicking outside of it
+    window.addEventListener('click', (event) => {
+        if (event.target === qrModal) {
+            qrModal.classList.add('hidden');
+        }
+    });
+}
+
+// Generate QR Code
+function generateQRCode() {
+    const currentUrl = window.location.href.split('?')[0]; // Remove any query parameters
+    const qrContainer = document.getElementById('qr-code');
+    const qrModalContainer = document.getElementById('qr-modal-code');
+    
+    // Clear previous QR codes
+    qrContainer.innerHTML = '';
+    qrModalContainer.innerHTML = '';
+    
+    // Generate QR code options
+    const qrOptions = {
+        errorCorrectionLevel: 'H',
+        margin: 1,
+        width: 200,
+        color: {
+            dark: '#3498db',
+            light: '#ffffff'
+        }
+    };
+    
+    // Generate QR code
+    try {
+        // Check if we're on a mobile device
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        
+        if (isMobile) {
+            // Show in modal for mobile
+            QRCode.toCanvas(qrModalContainer, currentUrl, qrOptions, function (error) {
+                if (error) {
+                    console.error('Error generating QR code:', error);
+                    alert('Error generating QR code. Please try again.');
+                } else {
+                    qrModal.classList.remove('hidden');
+                    
+                    // Make the QR code in modal tappable to save
+                    const canvas = qrModalContainer.querySelector('canvas');
+                    if (canvas) {
+                        canvas.addEventListener('click', saveQRCode);
+                    }
+                }
+            });
+        } else {
+            // Show inline for desktop
+            QRCode.toCanvas(qrContainer, currentUrl, qrOptions, function (error) {
+                if (error) {
+                    console.error('Error generating QR code:', error);
+                    alert('Error generating QR code. Please try again.');
+                } else {
+                    qrCodeContainer.classList.remove('hidden');
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error generating QR code:', error);
+        alert('Error generating QR code. Please try again.');
+    }
+}
+
+// Save QR Code
+function saveQRCode() {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const canvas = isMobile ? 
+        document.querySelector('#qr-modal-code canvas') : 
+        document.querySelector('#qr-code canvas');
+    
+    if (!canvas) {
+        alert('No QR code found to save. Please generate a QR code first.');
+        return;
+    }
+    
+    try {
+        // Convert canvas to data URL
+        const dataUrl = canvas.toDataURL('image/png');
+        
+        // Create a temporary link element
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = 'route_tracker_qr_code.png';
+        
+        // Append to the document and trigger a click
+        document.body.appendChild(link);
+        link.click();
+        
+        // Clean up
+        document.body.removeChild(link);
+        
+        if (isMobile) {
+            // Close the modal on mobile after saving
+            qrModal.classList.add('hidden');
+        }
+    } catch (error) {
+        console.error('Error saving QR code:', error);
+        alert('Error saving QR code: ' + error.message);
+    }
+}
+
+// Hide QR Code
+function hideQRCode() {
+    qrCodeContainer.classList.add('hidden');
 } 

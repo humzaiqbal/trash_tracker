@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Route Assignment Tracker</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- QR Code Library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -39,6 +41,27 @@
             </div>
             <div class="routes-container" id="routes-container">
                 <!-- Routes will be dynamically added here -->
+            </div>
+            
+            <!-- QR Code Generator Button -->
+            <div class="qr-code-section">
+                <button id="generate-qr-button" class="qr-button">Generate QR Code for This Website</button>
+                <div id="qr-code-container" class="hidden">
+                    <div id="qr-code"></div>
+                    <p class="qr-instruction">Scan this code to access the Route Assignment Tracker</p>
+                    <button id="save-qr-button" class="qr-button secondary">Save QR Code</button>
+                    <button id="close-qr-button" class="qr-button secondary">Close</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- QR Code Modal for mobile -->
+        <div id="qr-modal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h3>QR Code for Route Assignment Tracker</h3>
+                <div id="qr-modal-code"></div>
+                <p>Scan this code or tap to save</p>
             </div>
         </div>
     </div>

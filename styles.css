@@ -411,4 +411,104 @@ button:hover {
 #repair-status {
     font-weight: bold;
     color: #e74c3c;
+}
+
+/* QR Code Styles */
+.qr-code-section {
+    margin-top: 30px;
+    background-color: #f9f9f9;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #eee;
+    text-align: center;
+}
+
+.qr-button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    margin: 10px 5px;
+    transition: background-color 0.3s;
+}
+
+.qr-button:hover {
+    background-color: #2980b9;
+}
+
+.qr-button.secondary {
+    background-color: #95a5a6;
+}
+
+.qr-button.secondary:hover {
+    background-color: #7f8c8d;
+}
+
+#qr-code-container {
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+#qr-code, #qr-modal-code {
+    background-color: white;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 0 auto;
+    display: inline-block;
+    max-width: 100%;
+}
+
+.qr-instruction {
+    color: #555;
+    margin: 10px 0;
+    font-size: 14px;
+}
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 25px;
+    border-radius: 8px;
+    max-width: 90%;
+    width: 350px;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.close-modal {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 24px;
+    cursor: pointer;
+    color: #95a5a6;
+}
+
+.close-modal:hover {
+    color: #7f8c8d;
 } 
