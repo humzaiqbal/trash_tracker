@@ -1160,27 +1160,42 @@ function generateQRCode() {
         
         if (isMobile) {
             // Show in modal for mobile
-            QRCode.toCanvas(qrModalContainer, currentUrl, qrOptions, function (error) {
+            QRCode.toDataURL(currentUrl, qrOptions, function (error, url) {
                 if (error) {
                     console.error('Error generating QR code:', error);
                     alert('Error generating QR code. Please try again.');
                 } else {
+                    // Create an image from the data URL
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.alt = 'QR Code for Route Assignment Tracker';
+                    img.style.maxWidth = '100%';
+                    
+                    // Clear the container and append the image
+                    qrModalContainer.innerHTML = '';
+                    qrModalContainer.appendChild(img);
                     qrModal.classList.remove('hidden');
                     
                     // Make the QR code in modal tappable to save
-                    const canvas = qrModalContainer.querySelector('canvas');
-                    if (canvas) {
-                        canvas.addEventListener('click', saveQRCode);
-                    }
+                    img.addEventListener('click', saveQRCode);
                 }
             });
         } else {
             // Show inline for desktop
-            QRCode.toCanvas(qrContainer, currentUrl, qrOptions, function (error) {
+            QRCode.toDataURL(currentUrl, qrOptions, function (error, url) {
                 if (error) {
                     console.error('Error generating QR code:', error);
                     alert('Error generating QR code. Please try again.');
                 } else {
+                    // Create an image from the data URL
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.alt = 'QR Code for Route Assignment Tracker';
+                    img.style.maxWidth = '100%';
+                    
+                    // Clear the container and append the image
+                    qrContainer.innerHTML = '';
+                    qrContainer.appendChild(img);
                     qrCodeContainer.classList.remove('hidden');
                 }
             });
@@ -1194,22 +1209,19 @@ function generateQRCode() {
 // Save QR Code
 function saveQRCode() {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const canvas = isMobile ? 
-        document.querySelector('#qr-modal-code canvas') : 
-        document.querySelector('#qr-code canvas');
+    const img = isMobile ? 
+        document.querySelector('#qr-modal-code img') : 
+        document.querySelector('#qr-code img');
     
-    if (!canvas) {
+    if (!img) {
         alert('No QR code found to save. Please generate a QR code first.');
         return;
     }
     
     try {
-        // Convert canvas to data URL
-        const dataUrl = canvas.toDataURL('image/png');
-        
         // Create a temporary link element
         const link = document.createElement('a');
-        link.href = dataUrl;
+        link.href = img.src;
         link.download = 'route_tracker_qr_code.png';
         
         // Append to the document and trigger a click
