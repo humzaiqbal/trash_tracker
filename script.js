@@ -112,32 +112,77 @@ const usersRef = database.ref('users');
 // Initialize data in Firebase if it doesn't exist
 function initializeFirebase() {
     routesRef.once('value', snapshot => {
+        console.log('Checking Firebase data structure...');
         // Check if there are issues with the data structure
         let needsReset = false;
         
         if (!snapshot.exists()) {
             // If routes don't exist in Firebase, initialize them
+            console.log('No data found in Firebase, will initialize with default values');
             needsReset = true;
         } else {
             // Check if the existing data has valid structure
             const data = snapshot.val();
+            console.log('Found existing Firebase data format:', Array.isArray(data) ? 'Array' : typeof data);
+            
             if (Array.isArray(data)) {
                 // Check if all routes have properly initialized people arrays
-                data.forEach(route => {
-                    if (!route.people || !Array.isArray(route.people)) {
-                        console.warn(`Route ${route.id} (${route.name}) has invalid people data, needs reset`);
+                let invalidRoutes = 0;
+                data.forEach((route, index) => {
+                    if (!route) {
+                        console.warn(`Route at index ${index} is null or undefined, needs reset`);
                         needsReset = true;
+                        invalidRoutes++;
+                    } else if (!route.people || !Array.isArray(route.people)) {
+                        if (route.id && route.name) {
+                            console.warn(`Route ${route.id} (${route.name}) has invalid people data: ${JSON.stringify(route.people)}`);
+                        } else {
+                            console.warn(`Route at index ${index} has invalid format: ${JSON.stringify(route)}`);
+                        }
+                        needsReset = true;
+                        invalidRoutes++;
                     }
                 });
+                
+                if (invalidRoutes > 0) {
+                    console.warn(`Found ${invalidRoutes} invalid routes out of ${data.length}`);
+                } else {
+                    console.log('All routes have valid structure, no reset needed');
+                }
+                
+                // Also check if we have all expected routes
+                if (data.length < 11) {
+                    console.warn(`Expected 11 routes but found only ${data.length}, will add missing routes`);
+                    needsReset = true;
+                }
             } else {
                 // Data is not an array, needs reset
-                console.warn('Firebase data is not in the expected format, needs reset');
+                console.warn('Firebase data is not in the expected array format:', data);
                 needsReset = true;
             }
         }
         
         if (needsReset) {
             console.log('Initializing Firebase with default routes');
+            
+            // Gather existing user assignments if possible
+            let existingAssignments = {};
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                if (Array.isArray(data)) {
+                    data.forEach(route => {
+                        if (route && route.id && route.people && Array.isArray(route.people)) {
+                            existingAssignments[route.id] = route.people;
+                        }
+                    });
+                } else if (typeof data === 'object' && data !== null) {
+                    Object.values(data).forEach(route => {
+                        if (route && route.id && route.people && Array.isArray(route.people)) {
+                            existingAssignments[route.id] = route.people;
+                        }
+                    });
+                }
+            }
             
             // Make sure each route has a properly initialized people array
             const defaultRoutes = [
@@ -153,6 +198,48 @@ function initializeFirebase() {
                 { id: 10, name: 'Guerrero between 18th and Liberty Street; Liberty street from Guerrero to Valencia', people: [] },
                 { id: 11, name: 'Guerrero between Liberty Street and 22nd; Hill Street from Guerrero to Valencia', people: [] },
             ];
+            
+            // Restore existing user assignments where possible
+            let restoredAssignments = 0;
+            defaultRoutes.forEach(route => {
+                if (existingAssignments[route.id] && existingAssignments[route.id].length > 0) {
+                    // Validate assignments before restoring
+                    const validPeople = [];
+                    existingAssignments[route.id].forEach(person => {
+                        if (typeof person === 'string') {
+                            validPeople.push({ 
+                                name: person, 
+                                id: person.toLowerCase().replace(/\s+/g, '_') 
+                            });
+                        } else if (person && typeof person === 'object' && person.name) {
+                            const validPerson = {
+                                name: person.name,
+                                id: person.id || person.name.toLowerCase().replace(/\s+/g, '_')
+                            };
+                            
+                            if (person.email) {
+                                validPerson.email = person.email;
+                            }
+                            
+                            if (person.anonymousCount && !isNaN(person.anonymousCount)) {
+                                validPerson.anonymousCount = person.anonymousCount;
+                            }
+                            
+                            validPeople.push(validPerson);
+                        }
+                    });
+                    
+                    if (validPeople.length > 0) {
+                        route.people = validPeople;
+                        restoredAssignments += validPeople.length;
+                        console.log(`Restored ${validPeople.length} user assignments for route ${route.id}`);
+                    }
+                }
+            });
+            
+            if (restoredAssignments > 0) {
+                console.log(`Successfully restored ${restoredAssignments} user assignments across all routes`);
+            }
             
             // Set the routes in Firebase
             routesRef.set(defaultRoutes)
@@ -717,7 +804,53 @@ function updateRouteInFirebase(route) {
         route.people = [];
     }
     
-    routesRef.child(route.id - 1).update(route);
+    // First get the current state of all routes to avoid overwriting other routes
+    routesRef.once('value')
+        .then(snapshot => {
+            if (snapshot.exists()) {
+                let currentRoutes = snapshot.val();
+                
+                // If currentRoutes is not an array, convert it
+                if (!Array.isArray(currentRoutes)) {
+                    if (typeof currentRoutes === 'object' && currentRoutes !== null) {
+                        currentRoutes = Object.values(currentRoutes);
+                    } else {
+                        // If there's no valid data, use our local routes array
+                        currentRoutes = [...routes];
+                    }
+                }
+                
+                // Find the route index in the array
+                const routeIndex = currentRoutes.findIndex(r => r.id === route.id);
+                
+                if (routeIndex !== -1) {
+                    // Update the route at the specific index
+                    currentRoutes[routeIndex] = route;
+                } else {
+                    // Route not found in current data, find where it should go
+                    const indexToInsert = route.id - 1;
+                    // Ensure the array is large enough
+                    while (currentRoutes.length <= indexToInsert) {
+                        currentRoutes.push(null);
+                    }
+                    currentRoutes[indexToInsert] = route;
+                }
+                
+                // Write all routes back to maintain the array structure
+                return routesRef.set(currentRoutes);
+            } else {
+                // If no data exists, initialize with our local routes
+                return routesRef.set(routes);
+            }
+        })
+        .then(() => {
+            console.log(`Route ${route.id} successfully updated in Firebase`);
+        })
+        .catch(error => {
+            console.error(`Error updating route ${route.id} in Firebase:`, error);
+            // Fallback to direct update if the get operation failed
+            routesRef.child(route.id - 1).update(route);
+        });
 }
 
 // Reset Firebase database to default values
