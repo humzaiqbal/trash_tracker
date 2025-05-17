@@ -511,4 +511,67 @@ button:hover {
 
 .close-modal:hover {
     color: #7f8c8d;
+}
+
+/* Admin styles */
+.admin-notice {
+    background-color: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.admin-notice p {
+    margin: 0;
+    color: #856404;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.admin-controls {
+    background-color: #f8d7da;
+    border-left: 4px solid #dc3545;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.admin-button {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.admin-button:hover {
+    background-color: #bd2130;
+}
+
+.admin-actions {
+    margin-top: 10px;
+}
+
+.clear-route-button {
+    width: 100%;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.clear-route-button:hover {
+    background-color: #bd2130;
 } 

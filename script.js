@@ -87,6 +87,12 @@ class User {
     equals(otherUser) {
         return this.id === otherUser.id;
     }
+    
+    // Check if user is an admin
+    isAdmin() {
+        const adminEmails = ['humza.iqbal9@gmail.com', 'admin@gmail.com'];
+        return adminEmails.includes(this.email.toLowerCase());
+    }
 }
 
 // State
@@ -489,6 +495,32 @@ function showRoutes() {
     routesSection.classList.remove('hidden');
     currentUserDisplay.textContent = `Logged in as: ${currentUser.getDisplayName()}`;
     
+    // Add admin controls if user is an admin
+    if (currentUser && currentUser.isAdmin()) {
+        const headerElement = routesSection.querySelector('.header-with-logout');
+        
+        // Remove any existing admin controls first
+        const existingAdminControls = routesSection.querySelector('.admin-controls');
+        if (existingAdminControls) {
+            existingAdminControls.remove();
+        }
+        
+        // Create admin controls
+        const adminControls = document.createElement('div');
+        adminControls.className = 'admin-controls';
+        adminControls.innerHTML = `
+            <button id="clear-all-routes-button" class="admin-button">Clear All Routes</button>
+        `;
+        
+        // Insert after the header-with-logout div
+        if (headerElement) {
+            headerElement.parentNode.insertBefore(adminControls, headerElement.nextSibling);
+            
+            // Add event listener for clear all routes button
+            document.getElementById('clear-all-routes-button').addEventListener('click', handleClearAllRoutes);
+        }
+    }
+    
     // Add privacy notice about email usage
     const privacyNotice = document.createElement('div');
     privacyNotice.className = 'privacy-notice';
@@ -497,10 +529,15 @@ function showRoutes() {
         Your name tag is highlighted for your reference.</p>
     `;
     
-    // Insert after the header-with-logout div
+    // Insert after the header-with-logout div or admin controls if they exist
     const headerElement = routesSection.querySelector('.header-with-logout');
+    const adminControls = routesSection.querySelector('.admin-controls');
     if (headerElement) {
-        headerElement.parentNode.insertBefore(privacyNotice, headerElement.nextSibling);
+        if (adminControls) {
+            headerElement.parentNode.insertBefore(privacyNotice, adminControls.nextSibling);
+        } else {
+            headerElement.parentNode.insertBefore(privacyNotice, headerElement.nextSibling);
+        }
     }
     
     renderRoutes();
@@ -586,6 +623,14 @@ function renderRoutes() {
     reminderElement.innerHTML = '<p>Routes with <span class="full-route">5 or more people</span> have reached the recommended maximum.</p>';
     routesContainer.appendChild(reminderElement);
     
+    // Display admin message if user is an admin
+    if (currentUser && currentUser.isAdmin()) {
+        const adminElement = document.createElement('div');
+        adminElement.className = 'admin-notice';
+        adminElement.innerHTML = '<p>You are logged in as an admin. You can clear all people assigned to each route.</p>';
+        routesContainer.appendChild(adminElement);
+    }
+    
     routes.forEach(route => {
         // Ensure route has a people property and it's an array
         if (!route.people || !Array.isArray(route.people)) {
@@ -646,6 +691,16 @@ function renderRoutes() {
             `;
         }
         
+        // Add admin clear button if user is an admin
+        let adminButtonHtml = '';
+        if (currentUser && currentUser.isAdmin() && peopleCount > 0) {
+            adminButtonHtml = `
+                <div class="admin-actions">
+                    <button class="clear-route-button" data-route-id="${route.id}">Clear All Assignments</button>
+                </div>
+            `;
+        }
+        
         // Generate HTML for all people tags
         const peopleTagsHtml = peopleObjects.map(person => {
             // Only show email for the current user (for their own reference)
@@ -680,6 +735,7 @@ function renderRoutes() {
                 ${peopleTagsHtml}
             </div>
             ${assignButtonHtml}
+            ${adminButtonHtml}
         `;
         
         routesContainer.appendChild(routeCard);
@@ -693,6 +749,11 @@ function renderRoutes() {
     // Add event listeners to anonymous group buttons
     document.querySelectorAll('.anonymous-button').forEach(button => {
         button.addEventListener('click', handleAnonymousGroupChange);
+    });
+    
+    // Add event listeners to clear route buttons (admin only)
+    document.querySelectorAll('.clear-route-button').forEach(button => {
+        button.addEventListener('click', handleClearRoute);
     });
 }
 
@@ -1222,6 +1283,75 @@ function handleAnonymousGroupChange(event) {
     
     // Update the route in Firebase
     updateRouteInFirebase(route);
+}
+
+// Handle clearing all people from a route (admin only)
+function handleClearRoute(event) {
+    if (!currentUser || !currentUser.isAdmin()) {
+        console.error('Non-admin user attempted to clear a route');
+        return;
+    }
+    
+    const routeId = parseInt(event.target.getAttribute('data-route-id'));
+    const route = routes.find(r => r.id === routeId);
+    
+    if (!route) return;
+    
+    if (confirm(`Are you sure you want to clear all assignments for route "${route.name}"?`)) {
+        // Save the original people array for logging purposes
+        const originalPeopleCount = route.people ? route.people.length : 0;
+        
+        // Clear all people from the route
+        route.people = [];
+        
+        // Update the route in Firebase
+        updateRouteInFirebase(route);
+        
+        console.log(`Admin ${currentUser.email} cleared ${originalPeopleCount} assignments from route ${route.id}`);
+        
+        // Show success message
+        alert(`Successfully cleared all assignments from route "${route.name}"`);
+    }
+}
+
+// Handle clearing all routes at once (admin only)
+function handleClearAllRoutes() {
+    if (!currentUser || !currentUser.isAdmin()) {
+        console.error('Non-admin user attempted to clear all routes');
+        return;
+    }
+    
+    if (confirm('Are you sure you want to clear ALL assignments from ALL routes? This cannot be undone.')) {
+        // Confirm again to prevent accidental clicks
+        if (confirm('WARNING: This will remove ALL volunteer assignments from ALL routes. Are you absolutely sure?')) {
+            // Count total assignments before clearing
+            let totalAssignments = 0;
+            routes.forEach(route => {
+                if (route.people && Array.isArray(route.people)) {
+                    totalAssignments += route.people.length;
+                    // Also count anonymous group members
+                    route.people.forEach(person => {
+                        if (person.anonymousCount) {
+                            totalAssignments += person.anonymousCount;
+                        }
+                    });
+                }
+            });
+            
+            // Clear all people from all routes
+            routes.forEach(route => {
+                route.people = [];
+            });
+            
+            // Sync all routes to Firebase
+            syncRoutesToFirebase();
+            
+            console.log(`Admin ${currentUser.email} cleared all routes with a total of ${totalAssignments} assignments`);
+            
+            // Show success message
+            alert(`Successfully cleared ALL assignments (${totalAssignments} total) from ALL routes`);
+        }
+    }
 }
 
 // Initialize QR Code DOM elements
